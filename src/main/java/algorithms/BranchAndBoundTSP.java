@@ -93,6 +93,18 @@ public class BranchAndBoundTSP {
             return;
         }
 
+        double lowerBound = calculateLowerBound(
+                startCity,
+                currentCity,
+                remainingCities,
+                currentDistance
+        );
+
+        if (lowerBound >= bestDistance) {
+            prunedBranches++;
+            return;
+        }
+
         // Пробваме всеки непосетен град
         for (int i = 0; i < remainingCities.size(); i++) {
             City nextCity =
@@ -124,6 +136,60 @@ public class BranchAndBoundTSP {
 
             remainingCities.add(i, nextCity);
         }
+    }
+
+    private double calculateLowerBound(
+            City startCity,
+            City currentCity,
+            List<City> remainingCities,
+            double currentDistance
+    ) {
+        if (remainingCities.isEmpty()) {
+            return currentDistance +
+                    tspGraph.distance(currentCity, startCity);
+        }
+
+        double lowerBound = currentDistance;
+
+        // Най-малкото възможно разстояние
+        // от текущия град до непосетен град
+        double minimumFromCurrent =
+                Double.POSITIVE_INFINITY;
+
+        for (City city : remainingCities) {
+            double distance =
+                    tspGraph.distance(currentCity, city);
+
+            if (distance < minimumFromCurrent) {
+                minimumFromCurrent = distance;
+            }
+        }
+
+        lowerBound += minimumFromCurrent;
+
+        // За всеки непосетен град добавяме
+        // най-малкото възможно изходящо разстояние
+        for (City city : remainingCities) {
+            double minimumOutgoingDistance =
+                    tspGraph.distance(city, startCity);
+
+            for (City otherCity : remainingCities) {
+                if (city == otherCity) {
+                    continue;
+                }
+
+                double distance =
+                        tspGraph.distance(city, otherCity);
+
+                if (distance < minimumOutgoingDistance) {
+                    minimumOutgoingDistance = distance;
+                }
+            }
+
+            lowerBound += minimumOutgoingDistance;
+        }
+
+        return lowerBound;
     }
 
     public double getBestDistance() {

@@ -2,6 +2,7 @@ package ui;
 
 import algorithms.BruteForceTSP;
 import algorithms.NearestNeighborTSP;
+import algorithms.BranchAndBoundTSP;
 import model.City;
 import model.TSPGraph;
 
@@ -10,6 +11,7 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+
 
 public class MainFrame extends JFrame {
 
@@ -74,7 +76,8 @@ public class MainFrame extends JFrame {
         algorithmComboBox = new JComboBox<>(
                 new String[]{
                         "Nearest Neighbor",
-                        "Brute Force"
+                        "Brute Force",
+                        "Branch and Bound"
                 }
         );
 
@@ -156,7 +159,116 @@ public class MainFrame extends JFrame {
             solveNearestNeighbor();
         } else if ("Brute Force".equals(selectedAlgorithm)) {
             solveBruteForce();
+        } else if ("Branch and Bound".equals(selectedAlgorithm)) {
+            solveBranchAndBound();
         }
+    }
+
+    private void solveBranchAndBound() {
+        if (!hasCities()) {
+            return;
+        }
+
+        int cityCount = tspGraph.getCities().size();
+
+        if (cityCount > 12) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Branch and Bound is limited to 12 cities.\n" +
+                            "Generate 12 or fewer cities.",
+                    "Too many cities",
+                    JOptionPane.WARNING_MESSAGE
+            );
+
+            return;
+        }
+
+        if (animationTimer != null) {
+            animationTimer.stop();
+        }
+
+        graphPanel.setRoute(new ArrayList<>());
+        graphPanel.setAlgorithmState(null, null);
+
+        setControlsEnabled(false);
+
+        resultLabel.setText(
+                "Calculating optimal route with Branch and Bound..."
+        );
+
+        SwingWorker<List<City>, Void> worker =
+                new SwingWorker<>() {
+
+                    private double bestDistance;
+                    private double executionTime;
+                    private long exploredNodes;
+                    private long prunedBranches;
+
+                    @Override
+                    protected List<City> doInBackground() {
+                        BranchAndBoundTSP algorithm =
+                                new BranchAndBoundTSP(tspGraph);
+
+                        long startTime = System.nanoTime();
+
+                        List<City> route = algorithm.solve();
+
+                        long endTime = System.nanoTime();
+
+                        bestDistance =
+                                algorithm.getBestDistance();
+
+                        exploredNodes =
+                                algorithm.getExploredNodes();
+
+                        prunedBranches =
+                                algorithm.getPrunedBranches();
+
+                        executionTime =
+                                (endTime - startTime) /
+                                        1_000_000.0;
+
+                        return route;
+                    }
+
+                    @Override
+                    protected void done() {
+                        try {
+                            List<City> route = get();
+
+                            startRouteAnimation(
+                                    route,
+                                    bestDistance,
+                                    executionTime,
+                                    "Next city",
+                                    " | Explored nodes: " +
+                                            exploredNodes +
+                                            " | Pruned branches: " +
+                                            prunedBranches
+                            );
+
+                        } catch (InterruptedException exception) {
+                            Thread.currentThread().interrupt();
+
+                            setControlsEnabled(true);
+
+                            resultLabel.setText(
+                                    "Calculation interrupted."
+                            );
+
+                        } catch (ExecutionException exception) {
+                            setControlsEnabled(true);
+
+                            resultLabel.setText(
+                                    "Error while calculating route."
+                            );
+
+                            exception.getCause().printStackTrace();
+                        }
+                    }
+                };
+
+        worker.execute();
     }
 
     private void solveNearestNeighbor() {
