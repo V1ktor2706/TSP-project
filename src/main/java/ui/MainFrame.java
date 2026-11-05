@@ -3,6 +3,8 @@ package ui;
 import algorithms.BruteForceTSP;
 import algorithms.NearestNeighborTSP;
 import algorithms.BranchAndBoundTSP;
+import algorithms.TwoOptTSP;
+
 import model.City;
 import model.TSPGraph;
 
@@ -76,6 +78,7 @@ public class MainFrame extends JFrame {
         algorithmComboBox = new JComboBox<>(
                 new String[]{
                         "Nearest Neighbor",
+                        "Nearest Neighbor + 2-opt",
                         "Brute Force",
                         "Branch and Bound"
                 }
@@ -157,8 +160,13 @@ public class MainFrame extends JFrame {
 
         if ("Nearest Neighbor".equals(selectedAlgorithm)) {
             solveNearestNeighbor();
+
+        } else if ("Nearest Neighbor + 2-opt".equals(selectedAlgorithm)) {
+            solveTwoOpt();
+
         } else if ("Brute Force".equals(selectedAlgorithm)) {
             solveBruteForce();
+
         } else if ("Branch and Bound".equals(selectedAlgorithm)) {
             solveBranchAndBound();
         }
@@ -374,6 +382,126 @@ public class MainFrame extends JFrame {
                                     "Next city",
                                     " | Checked routes: " +
                                             checkedRoutes
+                            );
+
+                        } catch (InterruptedException exception) {
+                            Thread.currentThread().interrupt();
+
+                            setControlsEnabled(true);
+
+                            resultLabel.setText(
+                                    "Calculation interrupted."
+                            );
+
+                        } catch (ExecutionException exception) {
+                            setControlsEnabled(true);
+
+                            resultLabel.setText(
+                                    "Error while calculating route."
+                            );
+
+                            exception.getCause().printStackTrace();
+                        }
+                    }
+                };
+
+        worker.execute();
+    }
+
+    private void solveTwoOpt() {
+        if (!hasCities()) {
+            return;
+        }
+
+        if (animationTimer != null) {
+            animationTimer.stop();
+        }
+
+        graphPanel.setRoute(new ArrayList<>());
+        graphPanel.setAlgorithmState(null, null);
+
+        setControlsEnabled(false);
+
+        resultLabel.setText(
+                "Improving Nearest Neighbor route with 2-opt..."
+        );
+
+        SwingWorker<List<City>, Void> worker =
+                new SwingWorker<>() {
+
+                    private double initialDistance;
+                    private double finalDistance;
+                    private double executionTime;
+
+                    private long checkedSwaps;
+                    private int improvements;
+
+                    @Override
+                    protected List<City> doInBackground() {
+                        TwoOptTSP algorithm =
+                                new TwoOptTSP(tspGraph);
+
+                        long startTime = System.nanoTime();
+
+                        List<City> route = algorithm.solve();
+
+                        long endTime = System.nanoTime();
+
+                        initialDistance =
+                                algorithm.getInitialDistance();
+
+                        finalDistance =
+                                algorithm.getFinalDistance();
+
+                        checkedSwaps =
+                                algorithm.getCheckedSwaps();
+
+                        improvements =
+                                algorithm.getImprovements();
+
+                        executionTime =
+                                (endTime - startTime) /
+                                        1_000_000.0;
+
+                        return route;
+                    }
+
+                    @Override
+                    protected void done() {
+                        try {
+                            List<City> route = get();
+
+                            double improvement =
+                                    initialDistance - finalDistance;
+
+                            double improvementPercentage = 0;
+
+                            if (initialDistance > 0) {
+                                improvementPercentage =
+                                        improvement /
+                                                initialDistance *
+                                                100;
+                            }
+
+                            String additionalInformation =
+                                    String.format(
+                                            " | Initial: %.2f" +
+                                                    " | Improvement: %.2f (%.2f%%)" +
+                                                    " | Checked swaps: %d" +
+                                                    " | Successful swaps: %d",
+                                            initialDistance,
+                                            improvement,
+                                            improvementPercentage,
+                                            checkedSwaps,
+                                            improvements
+                                    );
+
+                            startRouteAnimation(
+                                    route,
+                                    finalDistance,
+                                    executionTime,
+                                    "Next city",
+                                    additionalInformation
                             );
 
                         } catch (InterruptedException exception) {
