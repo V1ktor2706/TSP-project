@@ -1,3 +1,4 @@
+
 package ui;
 
 import javax.swing.*;
@@ -8,6 +9,11 @@ import model.TSPGraph;
 import model.City;
 
 import algorithms.NearestNeighborTSP;
+import algorithms.TwoOptTSP;
+import algorithms.BruteForceTSP;
+import algorithms.BranchAndBoundTSP;
+
+import java.util.concurrent.ExecutionException;
 
 import javax.swing.Timer;
 import java.util.ArrayList;
@@ -27,6 +33,7 @@ public class MainFrame extends JFrame {
     private JPanel contentPanel;
     private JPanel headerPanel;
     private JPanel mainPanel;
+    private JLabel resultDescriptionLabel;
 
     private JComboBox<String> algorithmComboBox;
     private JSlider cityCountSlider;
@@ -231,10 +238,10 @@ public class MainFrame extends JFrame {
         panel.add(distanceValueLabel);
         panel.add(Box.createVerticalStrut(8));
 
-        JLabel resultDescription =
+        resultDescriptionLabel =
                 createSecondaryLabel("Generate cities and run an algorithm");
 
-        panel.add(resultDescription);
+        panel.add(resultDescriptionLabel);
         panel.add(Box.createVerticalStrut(18));
 
         JPanel executionTimeRow = createResultRow(
@@ -415,6 +422,9 @@ public class MainFrame extends JFrame {
         distanceValueLabel.setText("—");
         executionTimeValueLabel.setText("—");
         visitedCitiesValueLabel.setText("0 / " + cityCount);
+        resultDescriptionLabel.setText(
+                "Generate cities and run an algorithm"
+        );
 
         statusLabel.setText("Ready");
         statusLabel.setForeground(Theme.START_GREEN);
@@ -521,6 +531,12 @@ public class MainFrame extends JFrame {
 
         if ("Nearest Neighbor".equals(selectedAlgorithm)) {
             runNearestNeighbor();
+        } else if ("Nearest Neighbor + 2-opt".equals(selectedAlgorithm)) {
+            runTwoOpt();
+        } else if ("Brute Force".equals(selectedAlgorithm)) {
+            runBruteForce();
+        } else if ("Branch and Bound".equals(selectedAlgorithm)) {
+            runBranchAndBound();
         } else {
             JOptionPane.showMessageDialog(
                     this,
@@ -567,10 +583,276 @@ public class MainFrame extends JFrame {
         double totalDistance =
                 tspGraph.calculateRouteDistance(fullRoute);
 
+        resultDescriptionLabel.setText(
+                "Nearest Neighbor result"
+        );
+
         startRouteAnimation(
                 fullRoute,
                 totalDistance,
                 executionTime
         );
     }
+
+    private void runTwoOpt() {
+        if (tspGraph.getCities().isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Generate cities first.",
+                    "No cities",
+                    JOptionPane.WARNING_MESSAGE
+            );
+
+            return;
+        }
+
+        if (animationTimer != null) {
+            animationTimer.stop();
+        }
+
+        setControlsEnabled(false);
+
+        statusLabel.setText("Calculating...");
+        statusLabel.setForeground(Theme.ROUTE_BLUE);
+
+        SwingWorker<List<City>, Void> worker =
+                new SwingWorker<>() {
+
+                    private TwoOptTSP algorithm;
+                    private double executionTime;
+
+                    @Override
+                    protected List<City> doInBackground() {
+                        algorithm = new TwoOptTSP(tspGraph);
+
+                        long startTime = System.nanoTime();
+
+                        List<City> route = algorithm.solve();
+
+                        long endTime = System.nanoTime();
+
+                        executionTime =
+                                (endTime - startTime) / 1_000_000.0;
+
+                        return route;
+                    }
+
+                    @Override
+                    protected void done() {
+                        try {
+                            List<City> route = get();
+
+                            double totalDistance =
+                                    tspGraph.calculateRouteDistance(route);
+
+                            resultDescriptionLabel.setText(
+                                    "2-opt improvements: "
+                                            + algorithm.getImprovements()
+                            );
+
+                            startRouteAnimation(
+                                    route,
+                                    totalDistance,
+                                    executionTime
+                            );
+
+                        } catch (InterruptedException exception) {
+                            Thread.currentThread().interrupt();
+                            showAlgorithmError();
+
+                        } catch (ExecutionException exception) {
+                            exception.printStackTrace();
+                            showAlgorithmError();
+                        }
+                    }
+                };
+
+        worker.execute();
+    }
+
+    private void runBruteForce() {
+        int cityCount = tspGraph.getCities().size();
+
+        if (cityCount == 0) {
+            showNoCitiesMessage();
+            return;
+        }
+
+        if (cityCount > 10) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Brute Force is limited to 10 cities because its complexity is O(n!).",
+                    "Too many cities",
+                    JOptionPane.WARNING_MESSAGE
+            );
+
+            return;
+        }
+
+        prepareForCalculation();
+
+        SwingWorker<List<City>, Void> worker =
+                new SwingWorker<>() {
+
+                    private BruteForceTSP algorithm;
+                    private double executionTime;
+
+                    @Override
+                    protected List<City> doInBackground() {
+                        algorithm = new BruteForceTSP(tspGraph);
+
+                        long startTime = System.nanoTime();
+                        List<City> route = algorithm.solve();
+                        long endTime = System.nanoTime();
+
+                        executionTime =
+                                (endTime - startTime) / 1_000_000.0;
+
+                        return route;
+                    }
+
+                    @Override
+                    protected void done() {
+                        try {
+                            List<City> route = get();
+
+                            double totalDistance =
+                                    tspGraph.calculateRouteDistance(route);
+
+                            resultDescriptionLabel.setText(
+                                    "Routes checked: "
+                                            + algorithm.getCheckedRoutes()
+                            );
+
+                            startRouteAnimation(
+                                    route,
+                                    totalDistance,
+                                    executionTime
+                            );
+
+                        } catch (InterruptedException exception) {
+                            Thread.currentThread().interrupt();
+                            showAlgorithmError();
+
+                        } catch (ExecutionException exception) {
+                            exception.printStackTrace();
+                            showAlgorithmError();
+                        }
+                    }
+                };
+
+        worker.execute();
+    }
+
+    private void runBranchAndBound() {
+        int cityCount = tspGraph.getCities().size();
+
+        if (cityCount == 0) {
+            showNoCitiesMessage();
+            return;
+        }
+
+        if (cityCount > 12) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Branch and Bound is limited to 12 cities to avoid a very long calculation.",
+                    "Too many cities",
+                    JOptionPane.WARNING_MESSAGE
+            );
+
+            return;
+        }
+
+        prepareForCalculation();
+
+        SwingWorker<List<City>, Void> worker =
+                new SwingWorker<>() {
+
+                    private BranchAndBoundTSP algorithm;
+                    private double executionTime;
+
+                    @Override
+                    protected List<City> doInBackground() {
+                        algorithm = new BranchAndBoundTSP(tspGraph);
+
+                        long startTime = System.nanoTime();
+                        List<City> route = algorithm.solve();
+                        long endTime = System.nanoTime();
+
+                        executionTime =
+                                (endTime - startTime) / 1_000_000.0;
+
+                        return route;
+                    }
+
+                    @Override
+                    protected void done() {
+                        try {
+                            List<City> route = get();
+
+                            double totalDistance =
+                                    tspGraph.calculateRouteDistance(route);
+
+                            resultDescriptionLabel.setText(
+                                    "Nodes: " + algorithm.getExploredNodes()
+                                            + " | Pruned: "
+                                            + algorithm.getPrunedBranches()
+                            );
+
+                            startRouteAnimation(
+                                    route,
+                                    totalDistance,
+                                    executionTime
+                            );
+
+                        } catch (InterruptedException exception) {
+                            Thread.currentThread().interrupt();
+                            showAlgorithmError();
+
+                        } catch (ExecutionException exception) {
+                            exception.printStackTrace();
+                            showAlgorithmError();
+                        }
+                    }
+                };
+
+        worker.execute();
+    }
+
+    private void prepareForCalculation() {
+        if (animationTimer != null) {
+            animationTimer.stop();
+        }
+
+        setControlsEnabled(false);
+
+        statusLabel.setText("Calculating...");
+        statusLabel.setForeground(Theme.ROUTE_BLUE);
+    }
+
+    private void showNoCitiesMessage() {
+        JOptionPane.showMessageDialog(
+                this,
+                "Generate cities first.",
+                "No cities",
+                JOptionPane.WARNING_MESSAGE
+        );
+    }
+
+    private void showAlgorithmError() {
+        statusLabel.setText("Error");
+        statusLabel.setForeground(Color.RED);
+
+        setControlsEnabled(true);
+
+        JOptionPane.showMessageDialog(
+                this,
+                "An error occurred while running the algorithm.",
+                "Algorithm error",
+                JOptionPane.ERROR_MESSAGE
+        );
+    }
 }
+
+
+
