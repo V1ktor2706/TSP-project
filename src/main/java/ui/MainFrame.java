@@ -7,6 +7,7 @@ import java.awt.*;
 
 import model.TSPGraph;
 import model.City;
+import model.AlgorithmResult;
 
 import algorithms.NearestNeighborTSP;
 import algorithms.TwoOptTSP;
@@ -28,6 +29,7 @@ public class MainFrame extends JFrame {
 
     private TSPGraph tspGraph;
     private GraphPanel graphPanel;
+    private ComparisonPanel comparisonPanel;
 
     private JLabel statusLabel;
     private JPanel contentPanel;
@@ -75,11 +77,39 @@ public class MainFrame extends JFrame {
         mainPanel = new JPanel(new BorderLayout(15, 0));
         mainPanel.setOpaque(false);
 
-        RoundedPanel configurationPanel = createConfigurationPanel();
-        RoundedPanel visualizationPanel = createVisualizationPanel();
+        RoundedPanel configurationPanel =
+                createConfigurationPanel();
 
-        mainPanel.add(configurationPanel, BorderLayout.WEST);
-        mainPanel.add(visualizationPanel, BorderLayout.CENTER);
+        RoundedPanel visualizationPanel =
+                createVisualizationPanel();
+
+        comparisonPanel = new ComparisonPanel();
+
+        JPanel rightPanel = new JPanel(
+                new BorderLayout(0, 15)
+        );
+
+        rightPanel.setOpaque(false);
+
+        rightPanel.add(
+                visualizationPanel,
+                BorderLayout.CENTER
+        );
+
+        rightPanel.add(
+                comparisonPanel,
+                BorderLayout.SOUTH
+        );
+
+        mainPanel.add(
+                configurationPanel,
+                BorderLayout.WEST
+        );
+
+        mainPanel.add(
+                rightPanel,
+                BorderLayout.CENTER
+        );
 
         contentPanel.add(headerPanel, BorderLayout.NORTH);
         contentPanel.add(mainPanel, BorderLayout.CENTER);
@@ -426,6 +456,8 @@ public class MainFrame extends JFrame {
                 "Generate cities and run an algorithm"
         );
 
+        comparisonPanel.clearResults();
+
         statusLabel.setText("Ready");
         statusLabel.setForeground(Theme.START_GREEN);
     }
@@ -583,6 +615,15 @@ public class MainFrame extends JFrame {
         double totalDistance =
                 tspGraph.calculateRouteDistance(fullRoute);
 
+        comparisonPanel.addResult(
+                new AlgorithmResult(
+                        "Nearest Neighbor",
+                        totalDistance,
+                        executionTime,
+                        false
+                )
+        );
+
         resultDescriptionLabel.setText(
                 "Nearest Neighbor result"
         );
@@ -644,6 +685,15 @@ public class MainFrame extends JFrame {
 
                             double totalDistance =
                                     tspGraph.calculateRouteDistance(route);
+
+                            comparisonPanel.addResult(
+                                    new AlgorithmResult(
+                                            "Nearest Neighbor + 2-opt",
+                                            totalDistance,
+                                            executionTime,
+                                            false
+                                    )
+                            );
 
                             resultDescriptionLabel.setText(
                                     "2-opt improvements: "
@@ -719,6 +769,15 @@ public class MainFrame extends JFrame {
                             double totalDistance =
                                     tspGraph.calculateRouteDistance(route);
 
+                            comparisonPanel.addResult(
+                                    new AlgorithmResult(
+                                            "Brute Force",
+                                            totalDistance,
+                                            executionTime,
+                                            true
+                                    )
+                            );
+
                             resultDescriptionLabel.setText(
                                     "Routes checked: "
                                             + algorithm.getCheckedRoutes()
@@ -792,6 +851,15 @@ public class MainFrame extends JFrame {
 
                             double totalDistance =
                                     tspGraph.calculateRouteDistance(route);
+
+                            comparisonPanel.addResult(
+                                    new AlgorithmResult(
+                                            "Branch and Bound",
+                                            totalDistance,
+                                            executionTime,
+                                            true
+                                    )
+                            );
 
                             resultDescriptionLabel.setText(
                                     "Nodes: " + algorithm.getExploredNodes()
