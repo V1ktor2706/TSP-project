@@ -14,7 +14,7 @@ public class ComparisonTableModel extends AbstractTableModel {
     private final String[] columnNames = {
             "Algorithm",
             "Distance",
-            "Time",
+            "Execution Time",
             "Quality"
     };
 

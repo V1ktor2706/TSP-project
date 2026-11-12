@@ -1,4 +1,3 @@
-
 package ui;
 
 import javax.swing.*;
@@ -31,7 +30,7 @@ public class MainFrame extends JFrame {
     private GraphPanel graphPanel;
     private ComparisonPanel comparisonPanel;
 
-    private JLabel statusLabel;
+    private StatusBadge statusLabel;
     private JPanel contentPanel;
     private JPanel headerPanel;
     private JPanel mainPanel;
@@ -48,6 +47,9 @@ public class MainFrame extends JFrame {
     private JLabel executionTimeValueLabel;
     private JLabel visitedCitiesValueLabel;
 
+    private JTextArea algorithmDescriptionArea;
+
+
     public MainFrame() {
         tspGraph = new TSPGraph();
 
@@ -63,6 +65,14 @@ public class MainFrame extends JFrame {
         setMinimumSize(new Dimension(1000, 700));
         setSize(1200, 780);
         setLocationRelativeTo(null);
+
+        java.net.URL iconUrl =
+                getClass().getResource("/icons/tsp-icon.png");
+
+        if (iconUrl != null) {
+            ImageIcon appIcon = new ImageIcon(iconUrl);
+            setIconImage(appIcon.getImage());
+        }
 
         getContentPane().setBackground(Theme.BACKGROUND);
     }
@@ -130,6 +140,24 @@ public class MainFrame extends JFrame {
         titleLabel.setFont(Theme.TITLE_FONT);
         titleLabel.setForeground(Theme.TEXT_PRIMARY);
 
+        JLabel iconLabel = new JLabel();
+
+        java.net.URL iconUrl =
+                getClass().getResource("/icons/tsp-icon.png");
+
+        if (iconUrl != null) {
+            ImageIcon originalIcon = new ImageIcon(iconUrl);
+
+            Image scaledImage = originalIcon.getImage()
+                    .getScaledInstance(
+                            42,
+                            42,
+                            Image.SCALE_SMOOTH
+                    );
+
+            iconLabel.setIcon(new ImageIcon(scaledImage));
+        }
+
         JLabel subtitleLabel =
                 new JLabel("Traveling Salesman Problem Simulator");
 
@@ -140,14 +168,24 @@ public class MainFrame extends JFrame {
         titlePanel.add(Box.createVerticalStrut(3));
         titlePanel.add(subtitleLabel);
 
-        statusLabel = new JLabel("Ready");
-        statusLabel.setFont(Theme.NORMAL_FONT);
-        statusLabel.setForeground(Theme.START_GREEN);
-        statusLabel.setBorder(
-                new EmptyBorder(7, 13, 7, 13)
+        JPanel leftHeaderPanel = new JPanel();
+
+        leftHeaderPanel.setLayout(
+                new BoxLayout(
+                        leftHeaderPanel,
+                        BoxLayout.X_AXIS
+                )
         );
 
-        header.add(titlePanel, BorderLayout.WEST);
+        leftHeaderPanel.setOpaque(false);
+
+        leftHeaderPanel.add(iconLabel);
+        leftHeaderPanel.add(Box.createHorizontalStrut(12));
+        leftHeaderPanel.add(titlePanel);
+
+        statusLabel = new StatusBadge("Ready");
+
+        header.add(leftHeaderPanel, BorderLayout.WEST);
         header.add(statusLabel, BorderLayout.EAST);
 
         return header;
@@ -186,7 +224,35 @@ public class MainFrame extends JFrame {
         algorithmComboBox.setForeground(Theme.TEXT_PRIMARY);
 
         panel.add(algorithmComboBox);
-        panel.add(Box.createVerticalStrut(18));
+        panel.add(Box.createVerticalStrut(8));
+
+        algorithmDescriptionArea = new JTextArea();
+        algorithmDescriptionArea.setEditable(false);
+        algorithmDescriptionArea.setFocusable(false);
+        algorithmDescriptionArea.setOpaque(false);
+
+        algorithmDescriptionArea.setLineWrap(true);
+        algorithmDescriptionArea.setWrapStyleWord(true);
+
+        algorithmDescriptionArea.setFont(Theme.SMALL_FONT);
+        algorithmDescriptionArea.setForeground(Theme.TEXT_SECONDARY);
+
+        algorithmDescriptionArea.setMaximumSize(
+                new Dimension(Integer.MAX_VALUE, 58)
+        );
+
+        algorithmDescriptionArea.setPreferredSize(
+                new Dimension(270, 58)
+        );
+
+        panel.add(algorithmDescriptionArea);
+        panel.add(Box.createVerticalStrut(12));
+
+        algorithmComboBox.addActionListener(
+                e -> updateAlgorithmDescription()
+        );
+
+        updateAlgorithmDescription();
 
         JPanel cityHeaderPanel = new JPanel(new BorderLayout());
         cityHeaderPanel.setOpaque(false);
@@ -269,7 +335,7 @@ public class MainFrame extends JFrame {
         panel.add(Box.createVerticalStrut(8));
 
         resultDescriptionLabel =
-                createSecondaryLabel("Generate cities and run an algorithm");
+                createSecondaryLabel("");
 
         panel.add(resultDescriptionLabel);
         panel.add(Box.createVerticalStrut(18));
@@ -438,7 +504,6 @@ public class MainFrame extends JFrame {
         int cityCount = cityCountSlider.getValue();
 
         statusLabel.setText("Generating...");
-        statusLabel.setForeground(Theme.ROUTE_BLUE);
 
         tspGraph = new TSPGraph();
 
@@ -453,13 +518,12 @@ public class MainFrame extends JFrame {
         executionTimeValueLabel.setText("—");
         visitedCitiesValueLabel.setText("0 / " + cityCount);
         resultDescriptionLabel.setText(
-                "Generate cities and run an algorithm"
+                ""
         );
 
         comparisonPanel.clearResults();
 
         statusLabel.setText("Ready");
-        statusLabel.setForeground(Theme.START_GREEN);
     }
 
     private void startRouteAnimation(
@@ -469,7 +533,7 @@ public class MainFrame extends JFrame {
     ) {
         if (route == null || route.isEmpty()) {
             statusLabel.setText("No route found");
-            statusLabel.setForeground(Color.RED);
+
             setControlsEnabled(true);
             return;
         }
@@ -489,7 +553,6 @@ public class MainFrame extends JFrame {
         );
 
         statusLabel.setText("Animating...");
-        statusLabel.setForeground(Theme.ROUTE_BLUE);
 
         animationTimer = new Timer(400, e -> {
             int nextCityIndex = animatedRoute.size();
@@ -541,7 +604,6 @@ public class MainFrame extends JFrame {
                 );
 
                 statusLabel.setText("Finished");
-                statusLabel.setForeground(Theme.START_GREEN);
 
                 setControlsEnabled(true);
             }
@@ -598,7 +660,6 @@ public class MainFrame extends JFrame {
         setControlsEnabled(false);
 
         statusLabel.setText("Calculating...");
-        statusLabel.setForeground(Theme.ROUTE_BLUE);
 
         NearestNeighborTSP algorithm =
                 new NearestNeighborTSP(tspGraph);
@@ -625,7 +686,7 @@ public class MainFrame extends JFrame {
         );
 
         resultDescriptionLabel.setText(
-                "Nearest Neighbor result"
+                "Nearest Neighbor result:"
         );
 
         startRouteAnimation(
@@ -654,7 +715,6 @@ public class MainFrame extends JFrame {
         setControlsEnabled(false);
 
         statusLabel.setText("Calculating...");
-        statusLabel.setForeground(Theme.ROUTE_BLUE);
 
         SwingWorker<List<City>, Void> worker =
                 new SwingWorker<>() {
@@ -861,9 +921,9 @@ public class MainFrame extends JFrame {
                                     )
                             );
 
-                            resultDescriptionLabel.setText(
-                                    "Nodes: " + algorithm.getExploredNodes()
-                                            + " | Pruned: "
+                            resultDescriptionLabel.setToolTipText(
+                                    "Explored nodes: " + algorithm.getExploredNodes()
+                                            + " | Pruned branches: "
                                             + algorithm.getPrunedBranches()
                             );
 
@@ -895,7 +955,6 @@ public class MainFrame extends JFrame {
         setControlsEnabled(false);
 
         statusLabel.setText("Calculating...");
-        statusLabel.setForeground(Theme.ROUTE_BLUE);
     }
 
     private void showNoCitiesMessage() {
@@ -909,7 +968,6 @@ public class MainFrame extends JFrame {
 
     private void showAlgorithmError() {
         statusLabel.setText("Error");
-        statusLabel.setForeground(Color.RED);
 
         setControlsEnabled(true);
 
@@ -919,6 +977,36 @@ public class MainFrame extends JFrame {
                 "Algorithm error",
                 JOptionPane.ERROR_MESSAGE
         );
+    }
+
+    private void updateAlgorithmDescription() {
+        String selectedAlgorithm =
+                (String) algorithmComboBox.getSelectedItem();
+
+        if ("Nearest Neighbor".equals(selectedAlgorithm)) {
+            algorithmDescriptionArea.setText(
+                    "Approximate greedy algorithm. Visits the nearest "
+                            + "unvisited city. Complexity: O(n²)."
+            );
+
+        } else if ("Nearest Neighbor + 2-opt".equals(selectedAlgorithm)) {
+            algorithmDescriptionArea.setText(
+                    "Improves the Nearest Neighbor route by reversing "
+                            + "route segments. Approximate algorithm."
+            );
+
+        } else if ("Brute Force".equals(selectedAlgorithm)) {
+            algorithmDescriptionArea.setText(
+                    "Checks every possible route and guarantees the "
+                            + "optimal solution. Complexity: O(n!)."
+            );
+
+        } else if ("Branch and Bound".equals(selectedAlgorithm)) {
+            algorithmDescriptionArea.setText(
+                    "Exact algorithm that removes branches which cannot "
+                            + "improve the best solution. Worst case: O(n!)."
+            );
+        }
     }
 }
 

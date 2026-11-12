@@ -23,6 +23,41 @@ public class ComparisonPanel extends RoundedPanel {
         titleLabel.setFont(Theme.SECTION_TITLE_FONT);
         titleLabel.setForeground(Theme.TEXT_PRIMARY);
 
+        JButton clearButton = new JButton("Clear Results");
+
+        clearButton.setFont(Theme.SMALL_FONT);
+        clearButton.setForeground(Theme.TEXT_SECONDARY);
+        clearButton.setBackground(Theme.INPUT_BACKGROUND);
+        clearButton.setFocusable(false);
+
+        clearButton.setCursor(
+                Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+        );
+
+        clearButton.setPreferredSize(
+                new Dimension(110, 30)
+        );
+
+        clearButton.addActionListener(
+                e -> clearResults()
+        );
+
+        JPanel headerPanel = new JPanel(
+                new BorderLayout()
+        );
+
+        headerPanel.setOpaque(false);
+
+        headerPanel.add(
+                titleLabel,
+                BorderLayout.WEST
+        );
+
+        headerPanel.add(
+                clearButton,
+                BorderLayout.EAST
+        );
+
         tableModel = new ComparisonTableModel();
 
         comparisonTable = new JTable(tableModel);
@@ -39,7 +74,7 @@ public class ComparisonPanel extends RoundedPanel {
                 Theme.CARD_BACKGROUND
         );
 
-        add(titleLabel, BorderLayout.NORTH);
+        add(headerPanel, BorderLayout.NORTH);
         add(scrollPane, BorderLayout.CENTER);
     }
 
